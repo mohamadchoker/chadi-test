@@ -56,26 +56,27 @@ src/
 
 1. Clone the repository
 2. Install dependencies:
-   \`\`\`bash
+   ``
    npm install
-   \`\`\`
+   ``
 
 3. Create environment file:
-   \`\`\`bash
+  ``
    cp .env.example .env
-   \`\`\`
+  ``
 
 4. Configure your environment variables in `.env`
 
 5. Create MySQL database:
-   \`\`\`bash
-   npm run migrate
-   \`\`\`
+   ``
+   npm run db:create
+   npm run db:migrate
+   ``
 
-6. Start the development server:
-   \`\`\`bash
+7. Start the development server:
+   ``
    npm run dev
-   \`\`\`
+  ``
 
 ## API Endpoints
 
