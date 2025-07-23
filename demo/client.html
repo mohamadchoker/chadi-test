@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Location Tracking Demo</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .auth-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        input {
+            width: 200px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .location-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 15px 0;
+        }
+
+        .users-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .user-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+
+        .user-card.online {
+            border-left: 4px solid #28a745;
+        }
+
+        .user-card.offline {
+            border-left: 4px solid #6c757d;
+        }
+
+        .location-info {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+            font-size: 12px;
+        }
+
+        .logs {
+            height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-location {
+            color: #007bff;
+        }
+
+        .log-user {
+            color: #28a745;
+        }
+
+        .log-error {
+            color: #dc3545;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .history-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+
+        .history-table tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .history-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .stats-highlight {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🌍 Real-Time Location Tracking Demo</h1>
+
+    <!-- Authentication Section -->
+    <div class="container">
+        <h2>Authentication</h2>
+        <div id="auth-section">
+            <div class="auth-section">
+                <div>
+                    <h3>Login</h3>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="loginEmail" value="john.doe@example.com" placeholder="Enter email">
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="loginPassword" value="password123" placeholder="Enter password">
+                    </div>
+                    <button onclick="login()">Login</button>
+                </div>
+
+                <div>
+                    <h3>Register</h3>
+                    <div class="form-group">
+                        <label>Username:</label>
+                        <input type="text" id="regUsername" placeholder="Enter username">
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="regEmail" placeholder="Enter email">
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="regPassword" placeholder="Enter password">
+                    </div>
+                    <div class="form-group">
+                        <label>First Name:</label>
+                        <input type="text" id="regFirstName" placeholder="Enter first name">
+                    </div>
+                    <button onclick="register()">Register</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="user-info" class="hidden">
+            <h3>Welcome, <span id="currentUser"></span>!</h3>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <!-- Location Controls -->
+    <div class="container hidden" id="location-section">
+        <h2>Location Controls</h2>
+
+        <div class="location-controls">
+            <button onclick="getCurrentLocation()">Get My Location</button>
+            <button onclick="startLocationSharing()" id="shareBtn">Start Sharing</button>
+            <button onclick="stopLocationSharing()" id="stopBtn" disabled>Stop Sharing</button>
+            <label>
+                <input type="checkbox" id="visibilityToggle" onchange="toggleVisibility()">
+                Make my location visible to others
+            </label>
+        </div>
+
+        <div id="currentLocation" class="location-info">
+            Current Location: Not available
+        </div>
+
+        <div>
+            <h3>Manual Location Update (for testing)</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="number" id="manualLat" placeholder="Latitude" step="0.000001" style="width: 120px;">
+                <input type="number" id="manualLng" placeholder="Longitude" step="0.000001" style="width: 120px;">
+                <button onclick="updateManualLocation()">Update Location</button>
+                <button onclick="simulateMovement()">Simulate Movement</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Online Users -->
+    <div class="container hidden" id="users-section">
+        <h2>Online Users & Their Locations</h2>
+        <div id="usersList" class="users-list">
+            <!-- Users will be populated here -->
+        </div>
+    </div>
+
+    <!-- Location History -->
+    <div class="container hidden" id="history-section">
+        <h2>Location History</h2>
+        <div style="margin-bottom: 15px;">
+            <label>View history for:</label>
+            <select id="historyUserSelect" onchange="loadLocationHistory()">
+                <option value="">Select a user...</option>
+            </select>
+            <button onclick="loadLocationHistory()">Load History</button>
+            <button onclick="loadMyHistory()">My History</button>
+            <button onclick="refreshUsersForHistory()">Refresh Users</button>
+        </div>
+
+        <div id="historyControls" style="margin-bottom: 15px;">
+            <label>Show last:</label>
+            <select id="historyLimit" onchange="loadLocationHistory()">
+                <option value="10">10 locations</option>
+                <option value="25" selected>25 locations</option>
+                <option value="50">50 locations</option>
+                <option value="100">100 locations</option>
+            </select>
+            <button onclick="exportHistory()">Export CSV</button>
+        </div>
+
+        <div id="historyStats" class="location-info" style="margin-bottom: 15px;">
+            History Stats: No data loaded
+        </div>
+
+        <div id="locationHistory">
+            <div class="info">Select a user to view their location history</div>
+        </div>
+    </div>
+
+    <!-- Real-time Logs -->
+    <div class="container hidden" id="logs-section">
+        <h2>Real-time Activity Logs</h2>
+        <div id="logs" class="logs">
+            <!-- Logs will appear here -->
+        </div>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <script>
+        // Global variables
+        let socket = null;
+        let authToken = null;
+        let currentUser = null;
+        let locationWatchId = null;
+        let isSharing = false;
+
+        // Update the API_BASE constant to handle different environments
+        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000/api'
+            : 'http://localhost:3000/api';
+
+        // Utility functions
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => statusDiv.innerHTML = '', 5000);
+        }
+
+        function addLog(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logClass = type === 'location' ? 'log-location' :
+                type === 'user' ? 'log-user' :
+                    type === 'error' ? 'log-error' : '';
+
+            logsDiv.innerHTML += `<div class="log-entry ${logClass}">[${timestamp}] ${message}</div>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        // Add better CORS error handling
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                if (error.message.includes('CORS')) {
+                    throw new Error('CORS error: Make sure the backend server is running and CORS is properly configured');
+                }
+                throw error;
+            }
+        }
+
+        // Authentication functions
+        async function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showStatus('Please enter email and password', 'error');
+                return;
+            }
+
+            try {
+                const data = await makeRequest(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (data.success) {
+                    authToken = data.data.token;
+                    currentUser = data.data.user;
+
+                    showStatus(`Welcome back, ${currentUser.firstName || currentUser.username}!`, 'success');
+                    showLoggedInState();
+                    connectSocket();
+                    addLog(`Logged in as ${currentUser.username}`, 'user');
+                } else {
+                    showStatus(data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Login failed: ' + error.message, 'error');
+                addLog('Login error: ' + error.message, 'error');
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const firstName = document.getElementById('regFirstName').value;
+
+            if (!username || !email || !password) {
+                showStatus('Please fill in required fields', 'error');
+                return;
+            }
+
+            try {
+                const data = await makeRequest(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    body: JSON.stringify({ username, email, password, firstName })
+                });
+
+                if (data.success) {
+                    authToken = data.data.token;
+                    currentUser = data.data.user;
+
+                    showStatus(`Registration successful! Welcome, ${currentUser.firstName || currentUser.username}!`, 'success');
+                    showLoggedInState();
+                    connectSocket();
+                    addLog(`Registered and logged in as ${currentUser.username}`, 'user');
+                } else {
+                    showStatus(data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Registration failed: ' + error.message, 'error');
+                addLog('Registration error: ' + error.message, 'error');
+            }
+        }
+
+        function logout() {
+            if (socket) {
+                socket.disconnect();
+            }
+            authToken = null;
+            currentUser = null;
+            stopLocationSharing();
+
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('user-info').classList.add('hidden');
+            document.getElementById('location-section').classList.add('hidden');
+            document.getElementById('users-section').classList.add('hidden');
+            document.getElementById('logs-section').classList.add('hidden');
+            document.getElementById('history-section').classList.add('hidden');
+
+            showStatus('Logged out successfully', 'success');
+            addLog('Logged out', 'user');
+        }
+
+        function showLoggedInState() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('user-info').classList.remove('hidden');
+            document.getElementById('location-section').classList.remove('hidden');
+            document.getElementById('users-section').classList.remove('hidden');
+            document.getElementById('logs-section').classList.remove('hidden');
+            document.getElementById('history-section').classList.remove('hidden');
+
+            document.getElementById('currentUser').textContent = currentUser.firstName || currentUser.username;
+            document.getElementById('visibilityToggle').checked = currentUser.isLocationVisible;
+
+            // Load users for history dropdown
+            loadUsersForHistory();
+        }
+
+        // Socket connection
+        function connectSocket() {
+            socket = io('http://localhost:3000', {
+                auth: {
+                    token: authToken
+                }
+            });
+
+            socket.on('connect', () => {
+                addLog('Connected to real-time server', 'user');
+                loadOnlineUsers();
+            });
+
+            socket.on('disconnect', () => {
+                addLog('Disconnected from server', 'error');
+            });
+
+            socket.on('locationUpdate', (data) => {
+                addLog(`📍 ${data.username || data.user?.username} updated location: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`, 'location');
+                updateUserLocation(data);
+            });
+
+            socket.on('userOnline', (data) => {
+                addLog(`🟢 ${data.username} came online`, 'user');
+                loadOnlineUsers();
+                // Refresh history users when someone comes online
+                loadUsersForHistory();
+            });
+
+            socket.on('userOffline', (data) => {
+                addLog(`🔴 ${data.username} went offline`, 'user');
+                loadOnlineUsers();
+            });
+
+            socket.on('locationVisibilityChanged', (data) => {
+                addLog(`👁️ User ${data.userId} ${data.isLocationVisible ? 'enabled' : 'disabled'} location visibility`, 'user');
+                loadOnlineUsers();
+                // Refresh history users when visibility changes
+                loadUsersForHistory();
+            });
+
+            socket.on('error', (error) => {
+                addLog('Socket error: ' + error.message, 'error');
+            });
+        }
+
+        // Location functions
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                showStatus('Geolocation is not supported by this browser', 'error');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+
+                    document.getElementById('currentLocation').textContent =
+                        `Current Location: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${accuracy.toFixed(1)}m)`;
+
+                    document.getElementById('manualLat').value = lat;
+                    document.getElementById('manualLng').value = lng;
+
+                    addLog(`📍 Got current location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'location');
+                },
+                (error) => {
+                    showStatus('Error getting location: ' + error.message, 'error');
+                    addLog('Geolocation error: ' + error.message, 'error');
+                }
+            );
+        }
+
+        function startLocationSharing() {
+            if (!navigator.geolocation) {
+                showStatus('Geolocation is not supported', 'error');
+                return;
+            }
+
+            locationWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const locationData = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+
+                    updateLocationOnServer(locationData);
+                },
+                (error) => {
+                    addLog('Location watch error: ' + error.message, 'error');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+
+            isSharing = true;
+            document.getElementById('shareBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+
+            showStatus('Started location sharing', 'success');
+            addLog('Started automatic location sharing', 'location');
+        }
+
+        function stopLocationSharing() {
+            if (locationWatchId) {
+                navigator.geolocation.clearWatch(locationWatchId);
+                locationWatchId = null;
+            }
+
+            isSharing = false;
+            document.getElementById('shareBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+
+            showStatus('Stopped location sharing', 'info');
+            addLog('Stopped automatic location sharing', 'location');
+        }
+
+        async function updateLocationOnServer(locationData) {
+            try {
+                const response = await fetch(`${API_BASE}/locations/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(locationData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('currentLocation').textContent =
+                        `Current Location: ${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)} (±${locationData.accuracy?.toFixed(1) || 'N/A'}m)`;
+
+                    // Emit to socket for real-time updates
+                    if (socket) {
+                        socket.emit('locationUpdate', locationData);
+                    }
+                } else {
+                    addLog('Failed to update location: ' + data.message, 'error');
+                }
+            } catch (error) {
+                addLog('Location update error: ' + error.message, 'error');
+            }
+        }
+
+        function updateManualLocation() {
+            const lat = parseFloat(document.getElementById('manualLat').value);
+            const lng = parseFloat(document.getElementById('manualLng').value);
+
+            if (isNaN(lat) || isNaN(lng)) {
+                showStatus('Please enter valid latitude and longitude', 'error');
+                return;
+            }
+
+            const locationData = {
+                latitude: lat,
+                longitude: lng,
+                accuracy: 10.0
+            };
+
+            updateLocationOnServer(locationData);
+            addLog(`📍 Manual location update: ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'location');
+        }
+
+        // Simulate movement for demo purposes
+        function simulateMovement() {
+            const baseLat = parseFloat(document.getElementById('manualLat').value) || 40.7128;
+            const baseLng = parseFloat(document.getElementById('manualLng').value) || -74.0060;
+
+            let step = 0;
+            const maxSteps = 10;
+
+            const interval = setInterval(() => {
+                const lat = baseLat + (Math.random() - 0.5) * 0.01; // Random movement within ~1km
+                const lng = baseLng + (Math.random() - 0.5) * 0.01;
+
+                const locationData = {
+                    latitude: lat,
+                    longitude: lng,
+                    accuracy: 5 + Math.random() * 10
+                };
+
+                updateLocationOnServer(locationData);
+                addLog(`🚶 Simulated movement: ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'location');
+
+                step++;
+                if (step >= maxSteps) {
+                    clearInterval(interval);
+                    addLog('Simulation completed', 'location');
+                }
+            }, 2000); // Update every 2 seconds
+
+            addLog('Started movement simulation (10 steps, 2s intervals)', 'location');
+        }
+
+        async function toggleVisibility() {
+            const isVisible = document.getElementById('visibilityToggle').checked;
+
+            try {
+                const response = await fetch(`${API_BASE}/users/location-visibility`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ isLocationVisible: isVisible })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus(`Location visibility ${isVisible ? 'enabled' : 'disabled'}`, 'success');
+                    addLog(`👁️ Location visibility ${isVisible ? 'enabled' : 'disabled'}`, 'user');
+
+                    // Emit to socket
+                    if (socket) {
+                        socket.emit('toggleLocationSharing', { isLocationVisible: isVisible });
+                    }
+                } else {
+                    showStatus('Failed to update visibility: ' + data.message, 'error');
+                    document.getElementById('visibilityToggle').checked = !isVisible; // Revert
+                }
+            } catch (error) {
+                showStatus('Error updating visibility: ' + error.message, 'error');
+                document.getElementById('visibilityToggle').checked = !isVisible; // Revert
+                addLog('Visibility update error: ' + error.message, 'error');
+            }
+        }
+
+        async function loadOnlineUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/locations/visible-users`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayUsers(data.data);
+                }
+            } catch (error) {
+                addLog('Error loading users: ' + error.message, 'error');
+            }
+        }
+
+        function displayUsers(users) {
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = '';
+
+            users.forEach(user => {
+                const userCard = document.createElement('div');
+                userCard.className = `user-card ${user.isOnline ? 'online' : 'offline'}`;
+
+                const location = user.locations && user.locations[0];
+                const locationInfo = location ?
+                    `📍 ${location.latitude}, ${location.longitude}<br>
+                     🕒 ${new Date(location.timestamp).toLocaleString()}<br>
+                     📏 ±${location.accuracy?.toFixed(1) || 'N/A'}m` :
+                    '📍 No location data';
+
+                userCard.innerHTML = `
+                    <h4>${user.firstName || ''} ${user.lastName || ''} (@${user.username})</h4>
+                    <div class="status ${user.isOnline ? 'success' : 'error'}">
+                        ${user.isOnline ? '🟢 Online' : '🔴 Offline'}
+                    </div>
+                    <div class="location-info">${locationInfo}</div>
+                    <small>Last seen: ${new Date(user.lastSeen).toLocaleString()}</small>
+                `;
+
+                usersList.appendChild(userCard);
+            });
+        }
+
+        function updateUserLocation(locationData) {
+            // This would update the specific user's location in the UI
+            // For now, we'll just reload all users
+            setTimeout(loadOnlineUsers, 500);
+        }
+
+        // Location History Functions
+        async function loadUsersForHistory() {
+            try {
+                addLog('🔄 Loading users for history dropdown...', 'info');
+
+                // Use the same endpoint as the visible users section
+                const response = await fetch(`${API_BASE}/locations/visible-users`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                const select = document.getElementById('historyUserSelect');
+
+                // Clear existing options except the first one
+                select.innerHTML = '<option value="">Select a user...</option>';
+
+                if (data.success) {
+                    // Add current user first
+                    const currentOption = document.createElement('option');
+                    currentOption.value = currentUser.id;
+                    currentOption.textContent = `${currentUser.firstName || currentUser.username} (Me)`;
+                    select.appendChild(currentOption);
+
+                    addLog(`✅ Added current user: ${currentUser.username}`, 'info');
+
+                    // Add other users with visible locations
+                    let visibleUsersCount = 0;
+                    data.data.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = `${user.firstName || user.username} (@${user.username}) ${user.isOnline ? '🟢' : '🔴'}`;
+                        select.appendChild(option);
+                        visibleUsersCount++;
+                        addLog(`✅ Added visible user: ${user.username}`, 'info');
+                    });
+
+                    addLog(`📊 Total users available for history: ${visibleUsersCount + 1} (including yourself)`, 'info');
+
+                    if (visibleUsersCount === 0) {
+                        addLog('ℹ️ No other users have shared their location yet', 'info');
+                        showStatus('No other users have shared their location. Ask other users to enable "Make my location visible to others"', 'info');
+                    }
+                } else {
+                    addLog('❌ Failed to load users: ' + data.message, 'error');
+                }
+            } catch (error) {
+                addLog('❌ Error loading users for history: ' + error.message, 'error');
+            }
+        }
+
+        // Add refresh function for users
+        async function refreshUsersForHistory() {
+            addLog('🔄 Refreshing users list...', 'info');
+            await loadUsersForHistory();
+            showStatus('Users list refreshed', 'success');
+        }
+
+        async function loadMyHistory() {
+            document.getElementById('historyUserSelect').value = currentUser.id;
+            await loadLocationHistory();
+        }
+
+        async function loadLocationHistory() {
+            const userId = document.getElementById('historyUserSelect').value;
+            const limit = document.getElementById('historyLimit').value;
+
+            if (!userId) {
+                document.getElementById('locationHistory').innerHTML = '<div class="info">Please select a user first</div>';
+                return;
+            }
+
+            try {
+                const url = userId === currentUser.id.toString()
+                    ? `${API_BASE}/locations/history?limit=${limit}`
+                    : `${API_BASE}/locations/history/${userId}?limit=${limit}`;
+
+                addLog(`📊 Loading location history for user ${userId}...`, 'info');
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayLocationHistory(data.data, userId);
+                    updateHistoryStats(data.data);
+                    addLog(`📊 Loaded ${data.data.length} location history entries`, 'info');
+                } else {
+                    document.getElementById('locationHistory').innerHTML = `<div class="error">Error: ${data.message}</div>`;
+                    addLog('❌ Failed to load history: ' + data.message, 'error');
+                }
+            } catch (error) {
+                document.getElementById('locationHistory').innerHTML = `<div class="error">Error loading history: ${error.message}</div>`;
+                addLog('❌ Error loading location history: ' + error.message, 'error');
+            }
+        }
+
+        function displayLocationHistory(history, userId) {
+            const historyDiv = document.getElementById('locationHistory');
+
+            if (history.length === 0) {
+                historyDiv.innerHTML = '<div class="info">No location history found for this user</div>';
+                return;
+            }
+
+            let historyHTML = `
+                <div style="margin-bottom: 15px;">
+                    <strong>Location History (${history.length} entries)</strong>
+                </div>
+                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead style="background-color: #f8f9fa; position: sticky; top: 0;">
+                            <tr>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">#</th>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Timestamp</th>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Latitude</th>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Longitude</th>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Accuracy</th>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Time Diff</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            history.forEach((location, index) => {
+                const timestamp = new Date(location.timestamp);
+                const timeDiff = index > 0 ?
+                    Math.round((new Date(history[index - 1].timestamp) - timestamp) / 1000) : 0;
+
+                // Highlight 20-second intervals
+                const timeDiffClass = (timeDiff >= 18 && timeDiff <= 22) ? 'stats-highlight' : '';
+
+                historyHTML += `
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 6px 8px;">${index + 1}</td>
+                        <td style="padding: 6px 8px;">${timestamp.toLocaleString()}</td>
+                        <td style="padding: 6px 8px; font-family: monospace;">${location.latitude}</td>
+                        <td style="padding: 6px 8px; font-family: monospace;">${location.longitude}</td>
+                        <td style="padding: 6px 8px;">±${location.accuracy?.toFixed(1) || 'N/A'}m</td>
+                        <td style="padding: 6px 8px;" class="${timeDiffClass}">${timeDiff > 0 ? timeDiff + 's' : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            historyHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            historyDiv.innerHTML = historyHTML;
+        }
+
+        function updateHistoryStats(history) {
+            const statsDiv = document.getElementById('historyStats');
+
+            if (history.length === 0) {
+                statsDiv.textContent = 'History Stats: No data available';
+                return;
+            }
+
+            const totalEntries = history.length;
+            const timeSpan = history.length > 1 ?
+                (new Date(history[0].timestamp) - new Date(history[history.length - 1].timestamp)) / 1000 : 0;
+
+            const avgAccuracy = history.reduce((sum, loc) => sum + (loc.accuracy || 0), 0) / totalEntries;
+
+            // Calculate time intervals
+            const intervals = [];
+            for (let i = 1; i < history.length; i++) {
+                const diff = (new Date(history[i - 1].timestamp) - new Date(history[i].timestamp)) / 1000;
+                intervals.push(diff);
+            }
+
+            const avgInterval = intervals.length > 0 ?
+                intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length : 0;
+
+            // Check for 20-second intervals
+            const twentySecondIntervals = intervals.filter(i => i >= 18 && i <= 22).length;
+
+            statsDiv.innerHTML = `
+                <strong>History Stats:</strong> 
+                ${totalEntries} entries | 
+                Time span: ${Math.round(timeSpan / 60)} minutes | 
+                Avg accuracy: ±${avgAccuracy.toFixed(1)}m | 
+                Avg interval: ${avgInterval.toFixed(1)}s
+                ${twentySecondIntervals > 0 ? ` | ✅ ${twentySecondIntervals} intervals ~20s` : ''}
+            `;
+        }
+
+        function exportHistory() {
+            const userId = document.getElementById('historyUserSelect').value;
+            if (!userId) {
+                showStatus('Please select a user first', 'error');
+                return;
+            }
+
+            // This would trigger the history export
+            loadLocationHistory().then(() => {
+                const historyDiv = document.getElementById('locationHistory');
+                const table = historyDiv.querySelector('table');
+
+                if (!table) {
+                    showStatus('No history data to export', 'error');
+                    return;
+                }
+
+                // Convert table to CSV
+                let csv = 'Index,Timestamp,Latitude,Longitude,Accuracy,TimeDiff\n';
+                const rows = table.querySelectorAll('tbody tr');
+
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    const rowData = Array.from(cells).map(cell => cell.textContent.trim());
+                    csv += rowData.join(',') + '\n';
+                });
+
+                // Download CSV
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `location_history_${userId}_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                showStatus('History exported successfully', 'success');
+                addLog('📊 Location history exported to CSV', 'info');
+            });
+        }
+
+        // Initialize demo data
+        window.onload = function () {
+            addLog('Demo client loaded. Use demo credentials: john.doe@example.com / password123', 'info');
+
+            // Set some default manual coordinates (NYC)
+            document.getElementById('manualLat').value = 40.7128;
+            document.getElementById('manualLng').value = -74.0060;
+        };
+    </script>
+</body>
+
+</html>
