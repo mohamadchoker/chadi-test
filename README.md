@@ -21,7 +21,7 @@ A Node.js/Express.js backend application for real-time location tracking with us
 
 ## Project Structure
 
-\`\`\`
+```
 src/
 ├── config/
 │   └── database.js          # Database configuration
@@ -50,7 +50,7 @@ src/
 ├── sockets/
 │   └── locationSocket.js   # WebSocket event handlers
 └── server.js               # Application entry point
-\`\`\`
+```
 
 ## Installation
 
